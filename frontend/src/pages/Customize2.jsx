@@ -36,10 +36,10 @@ const Customize2 = () => {
     const formData = new FormData();
     formData.append('aiassistanceName', assistantName);
     if (selectedAssistant?.id === 'new' && selectedAssistant?.image instanceof File) {
-      // For custom assistants, send the File object
+      
       formData.append('image', selectedAssistant.image);
     } else if (selectedAssistant?.image) {
-      // For predefined assistants, send the Cloudinary URL
+    
       formData.append('assistanceImage', selectedAssistant.image);
     }
 
