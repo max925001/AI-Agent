@@ -5,10 +5,10 @@ import { toast } from 'react-hot-toast';
 
 // Define AI assistants with placeholder images
 const assistants = [
-  { id: 1, image:'https://res.cloudinary.com/dz6c061ci/image/upload/v1748449134/image4_do68wo.png'},
+  { id: 1, image:'https://res.cloudinary.com/dz6c061ci/image/upload/v1749747264/WhatsApp_Image_2025-06-12_at_22.19.40_nvi6wb.jpg'},
   { id: 3, image: 'https://res.cloudinary.com/dz6c061ci/image/upload/v1748449128/image1_jekknm.png' },
   { id: 4, image: 'https://res.cloudinary.com/dz6c061ci/image/upload/v1748449113/image5_wdno6d.png' },
-  { id: 5, image: 'https://res.cloudinary.com/dz6c061ci/image/upload/v1748449045/image2_iufzut.jpg' },
+  { id: 5, image: 'https://res.cloudinary.com/dz6c061ci/image/upload/v1749747137/WhatsApp_Image_2025-06-12_at_22.18.11_iguemh.jpg' },
   { id: 6, image: 'https://res.cloudinary.com/dz6c061ci/image/upload/v1748449032/image6_orzao9.jpg' },
   { id: 'new', image: null }, // Placeholder for custom AI
 ];
