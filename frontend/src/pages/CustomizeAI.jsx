@@ -10,13 +10,13 @@ const assistants = [
   { id: 4, image: 'https://res.cloudinary.com/dz6c061ci/image/upload/v1748449113/image5_wdno6d.png' },
   { id: 5, image: 'https://res.cloudinary.com/dz6c061ci/image/upload/v1749747137/WhatsApp_Image_2025-06-12_at_22.18.11_iguemh.jpg' },
   { id: 6, image: 'https://res.cloudinary.com/dz6c061ci/image/upload/v1748449032/image6_orzao9.jpg' },
-  { id: 'new', image: null }, // Placeholder for custom AI
+  { id: 'new', image: null }, 
 ];
 
 const CustomizeAI = () => {
   const navigate = useNavigate();
-  const [customImage, setCustomImage] = useState(null); // Store the File object
-  const [customImagePreview, setCustomImagePreview] = useState(null); // Store the preview URL
+  const [customImage, setCustomImage] = useState(null); 
+  const [customImagePreview, setCustomImagePreview] = useState(null); 
   const [selectedAssistant, setSelectedAssistant] = useState(null);
   const fileInputRef = useRef(null);
 
