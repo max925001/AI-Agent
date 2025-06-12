@@ -29,6 +29,9 @@ app.use(cors({
 app.use(cookieParser())
 
 app.use(morgan('dev'))
+app.get('/ping',(req,res) => {
+    res.send('pong')
+})
 
 app.use('/api/v1/user',authrouter)
 

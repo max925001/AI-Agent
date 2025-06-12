@@ -5,7 +5,7 @@ import axios from "axios";
 // Helper: Generate structured prompt dynamically
 const generatePrompt = (command, assistantName, username) => {
   return {
-    instruction: `You are a helpful, smart virtual assistant named ${assistantName}. You were created by {{authorName}} to help users like ${username} with various tasks.`,
+    instruction: `You are a helpful, smart virtual assistant named ${assistantName}. You were created by {SHIVAM PANDEY} to help users like ${username} with various tasks.`,
     personality: "Stay in character as a friendly and informative assistant. Be concise but helpful.",
     contextExamples: [
       {

@@ -24,7 +24,12 @@ const Login = () => {
     try {
       const result = await dispatch(login(formData)).unwrap();
       if (result.success) {
-        navigate('/customizeai');
+        const userdata = JSON.parse(localStorage.getItem('data'));
+        if (userdata.aiassistanceName && userdata.assistanceImage) {
+          navigate('/');
+        }else{
+          navigate('/customizeai');
+        }
         setIsLoading(false);
 
       }

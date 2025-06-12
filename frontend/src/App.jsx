@@ -12,6 +12,7 @@ import Customize2 from './pages/Customize2'
 
 function App() {
 const userData = JSON.parse(localStorage.getItem('data'));  
+console.log(userData)
 
   return (
   <Routes>

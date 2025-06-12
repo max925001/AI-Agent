@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { getUserData, logout, askAssistant, clearAssistantResponse } from '../redux/slices/authSlice';
@@ -9,169 +9,209 @@ function Home() {
   const navigate = useNavigate();
   const userData = useSelector((state) => state.auth.data);
   const assistantResponse = useSelector((state) => state.auth.assistantResponse);
-  console.log('Assistant response:', assistantResponse);
   const assistantLoading = useSelector((state) => state.auth.assistantLoading);
+  
+  const [isListening, setIsListening] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
   const [speechError, setSpeechError] = useState(null);
-  const [speechSynthesisError, setSpeechSynthesisError] = useState(null);
-  const [isAudioEnabled, setIsAudioEnabled] = useState(false); // Track if audio is enabled
+  const recognitionRef = useRef(null);
+  const synthesisRef = useRef(null);
 
   useEffect(() => {
-    console.log('Fetching user data...');
     dispatch(getUserData())
       .unwrap()
       .catch((error) => {
         console.error('Error fetching user data:', error);
         toast.error('Failed to load user data. Please try again.');
       });
-  }, [dispatch]);
 
-  useEffect(() => {
-    dispatch(clearAssistantResponse());
     return () => {
-      dispatch(clearAssistantResponse());
+      // Cleanup speech recognition and synthesis
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+        recognitionRef.current = null;
+      }
       window.speechSynthesis.cancel();
     };
   }, [dispatch]);
 
-  const username = userData?.name || 'User';
-  const assistantName = userData?.aiassistanceName || 'Your Assistant';
-  const assistantImage = userData?.assistanceImage || 'https://via.placeholder.com/150';
+  useEffect(() => {
+    dispatch(clearAssistantResponse());
+    initializeSpeechRecognition();
+  }, []);
 
   useEffect(() => {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition; // this is a class
-    // window.SpeechRecognition use for window and window.webkitSpeechRecognition use for browser
+    if (assistantResponse?.response) {
+      speak(assistantResponse.response);
+      if (assistantResponse?.data?.type === 'link') {
+        handleCommand(assistantResponse?.data?.value);
+      }
+    }
+  }, [assistantResponse]);
+
+  const initializeSpeechRecognition = () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    
     if (!SpeechRecognition) {
-      toast.error('Speech Recognition is not supported in this browser. Please use a supported browser like Chrome.');
+      toast.error('Speech Recognition is not supported in this browser. Please use Chrome.');
       setSpeechError('Speech recognition not supported.');
       return;
     }
 
-    const recognition = new SpeechRecognition(); // create a object of SpeechRecognition
-    recognition.continuous = true;
-    recognition.interimResults = false;
-    recognition.lang = 'en-US';
-  
+    recognitionRef.current = new SpeechRecognition();
+    recognitionRef.current.continuous = true;
+    recognitionRef.current.interimResults = false;
+    recognitionRef.current.lang = 'en-US';
 
-    recognition.onresult = async(event) => {
-      const transcript = event.results[event.results.length - 1][0].transcript.trim();
-      console.log('Recognized speech:', transcript);
-      const ans =transcript.toLowerCase().includes(userData?.aiassistanceName.toLowerCase())
-      console.log("ans",ans)
-      if(transcript.toLowerCase().includes(userData?.aiassistanceName.toLowerCase())) {
-
-         setSpeechError(null);
-      if (true) {
-        const command = transcript.toLowerCase();
-        
-        if (command.includes('logout')) {
-          speak('Logging you out.');
-          handleLogout();
-          return;
-        }
-       
-        if (command.includes('customize' || 'customise')) {
-          speak('Opening customization page.');
-          handleCustomize();
-          return;
-        }
-        handleCommandSubmit(transcript);
-      }
-      }
-     
+    recognitionRef.current.onstart = () => {
+      setIsListening(true);
     };
 
-    
+    recognitionRef.current.onend = () => {
+      setIsListening(false);
+      // Restart recognition if not speaking
+      if (!isSpeaking) {
+        recognitionRef.current.start();
+      }
+    };
 
-   
-
-    
-
-    recognition.start();
-  }, []);
-
- 
-
- 
-
-  useEffect(() => {
-    console.log('assistantResponse updated:', assistantResponse);
-    if (assistantResponse) {
-      if (assistantResponse.response) {
-        const responseText = assistantResponse.response;
-        console.log('Response text:', responseText);
-        speak(responseText);
-        if(assistantResponse?.data?.type==='link'){
-          console.log("open new window ")
-          console.log(assistantResponse?.data?.value)
-         handleCommand(assistantResponse?.data?.value)
-
+    recognitionRef.current.onerror = (event) => {
+      console.error('Speech recognition error:', event.error);
+      setSpeechError(`Recognition error: ${event.error}`);
+      // Attempt to restart recognition
+      setTimeout(() => {
+        if (recognitionRef.current && !isSpeaking) {
+          recognitionRef.current.start();
         }
-        
-      } else {
-        console.warn('No response field in assistantResponse:', assistantResponse);
-        speak('I encountered an issue. Please try again.');
-      }
-    }
-  }, [assistantResponse, isAudioEnabled]);
+      }, 1000);
+    };
 
-const speak = (text, language = 'en-US') => {
-    console.log("texting", text);
-    if (!text) {
-      console.warn('No text provided to speak');
+    recognitionRef.current.onresult = (event) => {
+      const transcript = event.results[event.results.length - 1][0].transcript.trim();
+      console.log('Recognized speech:', transcript);
+      
+      if (transcript.toLowerCase().includes(userData?.aiassistanceName?.toLowerCase() || 'assistant')) {
+        processUserCommand(transcript);
+      }
+    };
+
+    // Start listening initially
+    recognitionRef.current.start();
+  };
+
+  const processUserCommand = (command) => {
+    setSpeechError(null);
+    const lowerCommand = command.toLowerCase();
+
+    if (lowerCommand.includes('logout')) {
+      speak('Logging you out.', 'en-US').then(handleLogout);
       return;
     }
 
-    console.log('Speaking:', text);
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = language; // Set the desired language
-
-    const voices = window.speechSynthesis.getVoices();
-    console.log(voices);
-    let selectedVoice = voices.find(voice => voice.lang === language);
-
-    if (!selectedVoice) {
-      const langCode = language.split('-')[0];
-      selectedVoice = voices.find(voice => voice.lang.includes(langCode));
-    }
-
-    if (!selectedVoice) {
-      console.warn(`No voice found for language ${language}. Using any available voice.`);
-      selectedVoice = voices[0];
-      if (selectedVoice) {
-        utterance.lang = selectedVoice.lang;
-      }
-    }
-
-    if (selectedVoice) {
-      utterance.voice = selectedVoice;
-      console.log('Using voice:', selectedVoice.name);
-    } else {
-      console.warn('No voices available. Speech synthesis may not work.');
-    }
-
-    window.speechSynthesis.speak(utterance);
-};
-
-const handleCommand = (data) =>{
-  console.log("data",data)
- window.open(data,'_blank')
-}
-
-  const handleCommandSubmit = async (commandToSend) => {
-    if (!commandToSend || !commandToSend.trim()) {
-      speak('I didn’t hear a command. Please try again.');
+    if (lowerCommand.includes('customize') || lowerCommand.includes('customise')) {
+      speak('Opening customization page.', 'en-US').then(handleCustomize);
       return;
     }
 
-    dispatch(askAssistant(commandToSend))
-      .unwrap()
-      .catch((error) => {
-        console.error('Error asking assistant:', error);
-        speak('I encountered an error while processing your request. Please try again.');
-      });
+    // Detect language from command (simple implementation)
+    const detectedLanguage = detectLanguage(command) || 'en-US';
+    handleCommandSubmit(command, detectedLanguage);
+  };
+
+  const detectLanguage = (text) => {
+    // This is a simple implementation - you might want to use a proper language detection library
+    if (/[а-яА-Я]/.test(text)) return 'ru-RU'; // Russian
+    if (/[こんにちは]/.test(text)) return 'ja-JP'; // Japanese
+    if (/[你好]/.test(text)) return 'zh-CN'; // Chinese
+    if (/[안녕하세요]/.test(text)) return 'ko-KR'; // Korean
+    // Add more language detection as needed
+    return 'en-US'; // Default to English
+  };
+
+  const speak = (text, language = 'en-US') => {
+    return new Promise((resolve) => {
+      if (!text) {
+        console.warn('No text provided to speak');
+        resolve();
+        return;
+      }
+
+      // Stop recognition while speaking
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+      setIsSpeaking(true);
+
+      // Cancel any ongoing speech
+      window.speechSynthesis.cancel();
+
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = language;
+
+      utterance.onend = () => {
+        setIsSpeaking(false);
+        // Restart recognition after speaking is done
+        if (recognitionRef.current && !isListening) {
+          recognitionRef.current.start();
+        }
+        resolve();
+      };
+
+      utterance.onerror = (event) => {
+        console.error('Speech synthesis error:', event.error);
+        setSpeechError(`Speech error: ${event.error}`);
+        setIsSpeaking(false);
+        // Restart recognition after error
+        if (recognitionRef.current && !isListening) {
+          recognitionRef.current.start();
+        }
+        resolve();
+      };
+
+      // Wait for voices to be loaded
+      const voicesReady = () => {
+        const voices = window.speechSynthesis.getVoices();
+        if (voices.length > 0) {
+          let selectedVoice = voices.find(voice => voice.lang === language);
+          
+          if (!selectedVoice) {
+            const langCode = language.split('-')[0];
+            selectedVoice = voices.find(voice => voice.lang.includes(langCode));
+          }
+
+          if (selectedVoice) {
+            utterance.voice = selectedVoice;
+          }
+          window.speechSynthesis.speak(utterance);
+        } else {
+          setTimeout(voicesReady, 100);
+        }
+      };
+
+      voicesReady();
+    });
+  };
+
+  const handleCommand = (url) => {
+    window.open(url, '_blank');
+  };
+
+  const handleCommandSubmit = async (command, language = 'en-US') => {
+    if (!command || !command.trim()) {
+      speak('I didn\'t hear a command. Please try again.', language);
+      return;
+    }
+
+    try {
+      await dispatch(askAssistant(command)).unwrap();
+    } catch (error) {
+      console.error('Error asking assistant:', error);
+      speak('I encountered an error while processing your request. Please try again.', language);
+    }
   };
 
   const handleLogout = () => {
+    console.log("logout")
     dispatch(logout())
       .unwrap()
       .then(() => {
@@ -189,6 +229,11 @@ const handleCommand = (data) =>{
   const clearResponse = () => {
     dispatch(clearAssistantResponse());
   };
+
+  // UI rendering remains the same as your original code
+  const username = userData?.name || 'User';
+  const assistantName = userData?.aiassistanceName || 'Your Assistant';
+  const assistantImage = userData?.assistanceImage || 'https://via.placeholder.com/150';
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-teal-900 to-indigo-900 flex flex-col items-center justify-center px-4 sm:px-6 md:px-8 lg:px-10 py-6 sm:py-8 lg:py-10">
@@ -220,20 +265,7 @@ const handleCommand = (data) =>{
         </div>
       )}
 
-      {speechSynthesisError && (
-        <div className="w-full max-w-[300px] sm:max-w-[350px] lg:max-w-[400px] mt-6 bg-red-900/80 backdrop-blur-md rounded-xl shadow-xl p-6 sm:p-8">
-          <p className="text-sm xs:text-base sm:text-lg text-center text-red-300">
-            {speechSynthesisError}
-          </p>
-          {assistantResponse?.response && (
-            <p className="text-sm xs:text-base sm:text-lg text-center text-gray-300 mt-2">
-              Response: {assistantResponse.response}
-            </p>
-          )}
-        </div>
-      )}
-
-      {assistantResponse && !speechSynthesisError && (
+      {assistantResponse && (
         <div className="w-full max-w-[300px] sm:max-w-[350px] lg:max-w-[400px] mt-6 bg-gradient-to-b from-gray-800/80 to-gray-900/80 backdrop-blur-md rounded-xl shadow-xl p-6 sm:p-8">
           <p className={`text-sm xs:text-base sm:text-lg text-center ${assistantResponse.intent === 'error' || assistantResponse.intent === 'unknown' ? 'text-red-400' : 'text-gray-300'}`}>
             {assistantResponse.response}
